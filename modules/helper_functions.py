@@ -219,28 +219,32 @@ def create_field_plot():
 
     fig, axes = plt.subplots(figsize=(9, 6))
 
+    fig.canvas.draw()
+
     # Plot the entire field
     set_plot_area(axes, '#71AB47', '#FFFFFF', -60, 60, -40, 40)
-    
+
     # Create the artists for the players and ball
-    ball, = axes.plot([], [], "o", color="#000000", markersize=6, label='Ball')
-    team1, = axes.plot([], [], "o", color="#3D42D4", markersize=9, label='Team 1')
-    team2, = axes.plot([], [], "o", color="#F4252D", markersize=9, label='Team 2')
-    highlight, = axes.plot([], [], "o", color="#000000", markersize=15, mfc="none", label='Func')
+    ball, = axes.plot([], [], "o", color="#000000", markersize=6, label='Ball', animated=True)
+    team1, = axes.plot([], [], "o", color="#3D42D4", markersize=9, label='Team 1', animated=True)
+    team2, = axes.plot([], [], "o", color="#F4252D", markersize=9, label='Team 2', animated=True)
+    highlight, = axes.plot([], [], "o", color="#000000", markersize=15, mfc="none", label='Func', animated=True)
 
     # Plot a legend
     axes.legend(loc='upper right', bbox_to_anchor=(1.13, 1.05), fancybox=True, shadow=True)
     axes.set_aspect('auto')
 
-    fig.canvas.draw()
+    background = fig.canvas.copy_from_bbox(axes.bbox)
     
-    return fig, ball, team1, team2, highlight
+    return fig, axes, background, ball, team1, team2, highlight
 
 
-def update_positions(fig, ball, team1, team2, highlight, data, highlighted_plr_ids):
+def update_positions(fig, axes, background, ball, team1, team2, highlight, data, highlighted_plr_ids):
 
     ball_data, team1_data, team2_data, highlight_data,  = \
         msg_to_plot_data(data, highlighted_plr_ids, 'Team 1', 'Team 2', 0)
+
+    fig.canvas.restore_region(background)
 
     # Update the artists when any new data comes in
     ball.set_data(ball_data['X'], ball_data['Y'])
@@ -248,7 +252,11 @@ def update_positions(fig, ball, team1, team2, highlight, data, highlighted_plr_i
     team2.set_data(team2_data['X'], team2_data['Y'])
     highlight.set_data(highlight_data['X'], highlight_data['Y'])
 
-    fig.canvas.draw()
+    axes.draw_artist(ball)
+    axes.draw_artist(team1)
+    axes.draw_artist(team2)
+    axes.draw_artist(highlight)
+    fig.canvas.blit(axes.bbox)
 
 
 def get_datastream():
@@ -260,10 +268,10 @@ def get_datastream():
 
 def run_stream(datastream, func):
 
-    fig, ball, team1, team2, highlight = create_field_plot()
+    fig, axes, background, ball, team1, team2, highlight = create_field_plot()
 
     for data in datastream.local_stream():
 
         highlighted_ids = func(data)
-        update_positions(fig, ball, team1, team2, highlight, data, highlighted_ids)
+        update_positions(fig, axes, background, ball, team1, team2, highlight, data, highlighted_ids)
 
